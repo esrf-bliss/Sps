@@ -35,9 +35,10 @@
 #include <errno.h>
 #include <sys/shm.h>
 #include <sys/ipc.h> 
-#include <sys/types.h>
 #include <blissmalloc.h>
 #include <spec_shm.h>
+#include <signal.h>
+
 
 #ifndef IPCS
 #define IPCS "LC_ALL=C ipcs -m"  /* let the system find the path. */
@@ -57,8 +58,8 @@
    The routine init_ShmIDs is used to fill this buffer (slow!)
 */
 
-static unsigned long id_buffer[SHM_MAX_ENTRIES];
-static unsigned long id_no = 0;
+static unsigned int id_buffer[SHM_MAX_ENTRIES];
+static unsigned int id_no = 0;
 
 /* The data structure for all types of shared memories */
 struct shm_handle {
@@ -66,11 +67,11 @@ struct shm_handle {
 
   char * spec_version;  /* Copy from Spec shared memory header */
   char * array_name;
-  unsigned long pid;
-  unsigned long utime;
+  unsigned int pid;
+  unsigned int utime;
 
   struct shm_created *status_shm;   /* Shared memory pointer if attached */
-  unsigned long id;                 /* ID if scanned */
+  unsigned int id;                 /* ID if scanned */
   int attached;                     /* Flag if we are currently attached */
   int stay_attached;                /* Flag - want to stay always attached  */
   int write_flag;                   /* Flag if we want to write to the array*/
@@ -97,16 +98,16 @@ struct shm_handle {
 
 struct arrayid {
   char *name;
-  unsigned long id;
+  unsigned int id;
 };
 
 struct specid {
   char *spec_version;
-  unsigned long id;
-  long pid;
-  long ids_utime;
+  unsigned int id;
+  int pid;
+  int ids_utime;
   struct arrayid *array_names;
-  long arrayno;
+  int arrayno;
 }; 
 
 static struct specid SpecIDTab[SHM_MAX_ENTRIES];
@@ -120,14 +121,14 @@ static int SpecIDNo = 0;
 
 typedef struct sps_array {
   struct shm_header *shm;
-  unsigned long utime;
+  unsigned int utime;
   char * spec;
   char * array;
   int write_flag;
   int attached;
   int stay_attached;
   int pointer_got_count;
-  unsigned long id;
+  unsigned int id;
   void *private_data_copy;
   int buffer_len;
 } * SPS_ARRAY ; 
@@ -139,7 +140,6 @@ struct buffer_ptr {
   struct buffer_ptr *next;
 };
 
-static struct buffer_ptr *BUFFER_PTR_HEAD = NULL;
 
 /* 
    Linked list of shared memories I created or I created handles for 
@@ -148,7 +148,7 @@ static struct buffer_ptr *BUFFER_PTR_HEAD = NULL;
 */
 
 struct shm_created {
-  long int id;
+  int id;
   char *array_name;
   char *spec_version;
   int isstatus;
@@ -162,40 +162,38 @@ struct shm_created {
 
 static struct shm_created *SHM_CREATED_HEAD = NULL;
 
-static void *c_shmat (long id, char * ptr, int flag);
-static c_shmdt (void *ptr);
+static void *c_shmat (int id, char * ptr, int flag);
+static void c_shmdt (void *ptr);
 static int find_TabIDX_composed (char * fullname);
-static int find_TabIDX(char * spec_version, long pid);
+static int find_TabIDX(char * spec_version, int pid);
 static int find_ArrayIDX (int tab_idx, char * array_name);
-static char *composeVersion (char *version, long int pid); 
-static int extractVersion (char *fullname, char *name, long int *pid); 
+static char *composeVersion (char *version, int pid); 
+static int extractVersion (char *fullname, char *name, int *pid); 
 static int iscomposed (char *fullname); 
-static CheckSpecRunning (struct shm_header * shm);
-static delete_SpecIDTab (); 
-static SearchSpecVersions ();
-static SearchSpecArrays (char * fullname);
-static long SearchArrayOnly (char *arrayname); 
-static int init_ShmIDs ();
-static int getShmIDs (unsigned long **id_ptr, char * spec_version, 
-        char * name, long type);
-static int delete_id_from_list (unsigned long id); 
+static int CheckSpecRunning (struct shm_header * shm);
+static void delete_SpecIDTab (void); 
+static int SearchSpecVersions (void);
+static int SearchSpecArrays (char * fullname);
+static int SearchArrayOnly (char *arrayname); 
+static int init_ShmIDs (void);
+static int getShmIDs (unsigned int **id_ptr, char * spec_version, 
+        char * name, int type);
+static int delete_id_from_list (unsigned int id); 
 static int checkSHM (struct shm_header *shm, 
-        char * spec_version, char * name, long type);
+        char * spec_version, char * name, int type);
 static struct shm_header *attachArray (char *fullname, char *array, 
 	int read_only); 
 static struct shm_header *attachSpec (char * fullname);
-static typedsize(int t);
+static size_t typedsize(int t);
 int SPS_Size(int type);
-static typedcp(void *t, int tt, void *f, int ft, int np, int rev, int offset);
+static void typedcp(void *t, int tt, void *f, int ft, int np, int rev, int offset);
 char * SPS_GetNextSpec (int flag);
 char * SPS_GetNextArray (char * fullname, int flag);
 static char * GetNextAll (int flag);
-long int SPS_GetSpecState (char *version);
+int SPS_GetSpecState (char *version);
 static SPS_ARRAY add_private_shm (struct shm_header *shm, char *fullname, 
 			   char *array, int write_flag);
 static SPS_ARRAY convert_to_handle (char *spec_version, char *array_name);
-static int SPS_AttachToArray (char *fullname, char *array, int write_flag);
-static int SPS_DetachFromArray (char *fullname, char* array);
 static int DeconnectArray (SPS_ARRAY private_shm);
 static int ReconnectToArray (SPS_ARRAY private_shm, int write_flag);
 static void *CopyDataRC (char *fullname, char *array, int my_type, int row, 
@@ -212,8 +210,8 @@ int SPS_CopyToShared (char *name, char *array, void *buffer, int my_type,
 		      int items_in_buffer);
 static int TypedCopy (char *fullname, char *array, void *buffer, int my_type,
 		      int items_in_buffer, int direction);
-static typedcp_private (SPS_ARRAY private_shm, void *buffer, int my_type,
-			int items_in_buffer, int direction);
+static int typedcp_private (SPS_ARRAY private_shm, void *buffer, int my_type,
+			    int items_in_buffer, int direction);
 void * SPS_GetDataCopy (char *fullname, char *array, int my_type, 
 			int *rows_ptr, int *cols_ptr);
 int SPS_FreeDataCopy (char *fullname, char *array);
@@ -226,24 +224,24 @@ int SPS_GetArrayInfo (char * spec_version, char * array_name, int *rows,
 		  int *cols, int *type, int *flag);
 static struct shm_created * 
 ll_addnew_array (char *specversion, char *arrayname, int isstatus, 
-		 struct shm_created* status, long id, int my_creation,
+		 struct shm_created* status, int id, int my_creation,
 		 struct shm_header *shm);
 static struct shm_created *ll_find_pointer (struct shm_header* shm);
 static struct shm_created *ll_find_array 
                 (char *specversion, char *arrayname, int isstatus);
-static void * id_is_our_creation (unsigned long id);
+static void * id_is_our_creation (unsigned int id);
 static void * shm_is_our_creation (void *shm);
-static int ll_delete_array (struct shm_created *todel);
+static void ll_delete_array (struct shm_created *todel);
 static struct shm_header * 
 create_shm (char * specversion, char *array, int rows, 
 	    int cols, int type, int flags);
 static struct shm_header * create_master_shm (char* name);
-static delete_shm (long id); 
-static delete_id_from_status (struct shm_header *status, long id);
+static void delete_shm (int id); 
+static void delete_id_from_status (struct shm_header *status, int id);
 int SPS_CreateArray (char * spec_version, char *arrayname,
 		 int rows, int cols, int type, int flags);
 static int delete_handle(SPS_ARRAY handle);
-int SPS_CleanUpAll ();
+void SPS_CleanUpAll (void);
 
 
 /* 
@@ -251,19 +249,18 @@ int SPS_CleanUpAll ();
    we created ourselves
 */
 
-static void *c_shmat (long id, char * ptr, int flag) 
+static void *c_shmat (int id, char * ptr, int flag) 
 {
   void * shm;
-  if (shm = id_is_our_creation(id))
+  if((shm = id_is_our_creation(id)))
     return shm;
   return shmat (id, ptr, flag);
 }
 
-static c_shmdt (void *ptr) 
+static void c_shmdt (void *ptr) 
 {
   if (shm_is_our_creation(ptr) == NULL)
-    return shmdt (ptr);
-  return 0;
+    shmdt (ptr);
 }
 
 /* 
@@ -289,7 +286,7 @@ static int find_TabIDX_composed (char * fullname)
   return idx;
 }
 
-static int find_TabIDX(char * spec_version, long pid) 
+static int find_TabIDX(char * spec_version, int pid) 
 { 
   int i, idx = -1;
   int found = 0;
@@ -317,8 +314,7 @@ static int find_TabIDX(char * spec_version, long pid)
 static int find_ArrayIDX (int tab_idx, char * array_name)
 { 
   int i;
-  int found = 0; 
-  
+
   if (tab_idx >= SpecIDNo) 
     return -1;
   
@@ -334,11 +330,11 @@ static int find_ArrayIDX (int tab_idx, char * array_name)
 /* 
    Used internally to combine the version and the pid to a string 
    Input: version: spec version name 
-          pid: long int 
+          pid: int 
    returns: NULL if error
             combined string of both version and pid i.e. fourc(12345)
 */
-static char *composeVersion (char *version, long int pid) 
+static char *composeVersion (char *version,int pid) 
 {
   int len;
   char * comb;
@@ -359,7 +355,7 @@ static char *composeVersion (char *version, long int pid)
    returns: 1 if fullname contained a pid
             0 if not
 */
-static int extractVersion (char *fullname, char *name, long int *pid) 
+static int extractVersion (char *fullname, char *name, int *pid) 
 {
   long int pid_buf;
   char version_buf[512];
@@ -385,7 +381,7 @@ static int iscomposed (char *fullname)
 }
 
 /* Checks if the update program is still running */
-static CheckSpecRunning (struct shm_header * shm)
+static int CheckSpecRunning (struct shm_header * shm)
 {
   int id = shm->head.head.shmid;
   struct shmid_ds info;
@@ -411,7 +407,7 @@ static CheckSpecRunning (struct shm_header * shm)
   return 0;
 }
 
-static delete_SpecIDTab () 
+static void delete_SpecIDTab () 
 {
   int i,j;
   for (i = 0; i < SpecIDNo; i++) {
@@ -436,9 +432,9 @@ static delete_SpecIDTab ()
    for every Specversion
 */
  
-static SearchSpecVersions ()  
+static int SearchSpecVersions ()  
 {
-  unsigned long *id_ptr;
+  unsigned int *id_ptr;
   struct shm_header *shm;
   int i, j, n;
   int found;
@@ -492,13 +488,13 @@ static SearchSpecVersions ()
    Input: fullname : Name of the Version with possible pid (fourc, spec(123)
 */
 
-static SearchSpecArrays (char * fullname) 
+static int SearchSpecArrays (char * fullname) 
 {
-  unsigned long sid, id;
+  unsigned int id;
   int found;
   int redone = 0;
   int i, si, no, idx;
-  struct shm_header *shm;
+  struct shm_header *shm = NULL;
   struct shm_status *st;
 
  redo:
@@ -579,13 +575,13 @@ static SearchSpecArrays (char * fullname)
   }
 
   c_shmdt ((void *) shm);
+  return 0;
 }  
   
-static long SearchArrayOnly (char *arrayname) 
+static int SearchArrayOnly (char *arrayname) 
 {
-  unsigned long *id_ptr;
-  struct shm_header *shm;
-  int no, i;
+  unsigned int *id_ptr;
+  int no;
 
   if ( (no = getShmIDs (&id_ptr, NULL, arrayname, SHM_IS_ARRAY)) == 0) {
     init_ShmIDs ();
@@ -610,7 +606,7 @@ static int init_ShmIDs ()
   struct shmid_ds info;
   char buf[256];
   FILE *pd;
-  int col;
+  int col = 0;
 
   pd = (FILE*) popen(IPCS,"r");
   
@@ -710,14 +706,13 @@ static int init_ShmIDs ()
 	 type : 0 or a bitmap that must be set in the type field of the
 	        array (i.e. SHM_STATUS)
  */
-static int getShmIDs (unsigned long **id_ptr, char * spec_version, 
-	       char * name, long type)
+static int getShmIDs (unsigned int **id_ptr, char * spec_version, 
+	       char * name, int type)
 {
-  unsigned long id;
+  unsigned int id;
   int i, ids_no;
   struct shm_header *shm;
-  struct shmid_ds info;
-  static unsigned long ids[SHM_MAX_ENTRIES];
+  static unsigned int ids[SHM_MAX_ENTRIES];
 
   for (ids_no = 0, i = 0; i < id_no; i++) {
     id = id_buffer[i];
@@ -743,7 +738,7 @@ static int getShmIDs (unsigned long **id_ptr, char * spec_version,
 } 
 
 /* Delete a list ids from our */
-static int delete_id_from_list (unsigned long id) 
+static int delete_id_from_list (unsigned int id) 
 {
   int i, j, k, l, no;
   struct arrayid * new_arrays, *old_arrays;
@@ -779,9 +774,9 @@ static int delete_id_from_list (unsigned long id)
 	SpecIDTab[i].arrayno = no;
 	SpecIDTab[i].array_names = new_arrays ;
 	free (old_arrays);
-	return 0;
       }
   }
+  return 0;
 }
 
 /* 
@@ -796,10 +791,10 @@ static int delete_id_from_list (unsigned long id)
 */
 
 static int checkSHM (struct shm_header *shm, 
-	     char * spec_version, char * name, long type)
+	     char * spec_version, char * name, int type)
 {
   static char spec_name[512];
-  long int pid;
+  int pid;
 
   if (shm == NULL || shm == (struct shm_header *) -1)
      return 0;
@@ -842,7 +837,7 @@ static struct shm_header *attachArray (char *fullname, char *array,
 				       int read_only) 
 { 
   int idx, arr_idx, i, id;
-  struct shm_header *shm;
+  struct shm_header *shm = NULL;
 
   if (fullname) {
     for (i = 0; i < 2; i++) {
@@ -902,9 +897,6 @@ static struct shm_header *attachSpec (char * fullname)
 { 
   int idx = -1;
   struct shm_header *shm;
-  long int pid;
-  char spec_version[512];
-  int i;
 
   /* Search in out index - if already known */
   idx = find_TabIDX_composed(fullname);
@@ -934,12 +926,12 @@ static struct shm_header *attachSpec (char * fullname)
 
 
 /* How many bytes per data type -- perhaps a table would be smarter ... */
-static typedsize(int t) {
+static size_t typedsize(int t) {
 	switch (t) {
 	  case SHM_USHORT: return(sizeof(unsigned short));
-	  case SHM_ULONG:  return(sizeof(unsigned long));
+	  case SHM_UINT:  return(sizeof(unsigned int));
 	  case SHM_SHORT:  return(sizeof(short));
-	  case SHM_LONG:   return(sizeof(long));
+	  case SHM_INT:   return(sizeof(int));
 	  case SHM_UCHAR:  return(sizeof(unsigned char));
 	  case SHM_CHAR:   return(sizeof(char));
 	  case SHM_STRING: return(sizeof(char));
@@ -978,80 +970,80 @@ int SPS_Size (int t)
 				else while (n++) *a++ = *b--; \
 			} while (0)
 
-static typedcp(void *t, int tt, void *f, int ft, int np, int rev, int offset)
+static void typedcp(void *t, int tt, void *f, int ft, int np, int rev, int offset)
 {
 	if (np == 0)
-		return(0);
+	  return;
 
 	if (ft == tt && np > 0 && rev == 0) {
 	  memcpy(t, f, np * typedsize(ft));
-	  return(0);
+	  return;
 	}
 
 	switch (tt) {
-	 case SHM_LONG:
+	 case SHM_INT:
 	   switch (ft) {
-	    case SHM_DOUBLE:  ONECP(long, double);                   break;
-	    case SHM_FLOAT:   ONECP(long, float);                    break;
-	    case SHM_ULONG:   ONECP(long, unsigned long);            break;
-	    case SHM_USHORT:  ONECP(long, unsigned short);           break;
-	    case SHM_UCHAR:   ONECP(long, unsigned char);            break;
+	    case SHM_DOUBLE:  ONECP(int, double);                   break;
+	    case SHM_FLOAT:   ONECP(int, float);                    break;
+	    case SHM_UINT:   ONECP(int, unsigned int);            break;
+	    case SHM_USHORT:  ONECP(int, unsigned short);           break;
+	    case SHM_UCHAR:   ONECP(int, unsigned char);            break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
-	    case SHM_CHAR:    ONECP(long, char);                     break;
-	    case SHM_SHORT:   ONECP(long, short);                    break;
-	    case SHM_LONG:    ONECP(long, long);                     break;
+	    case SHM_CHAR:    ONECP(int, char);                     break;
+	    case SHM_SHORT:   ONECP(int, short);                    break;
+	    case SHM_INT:    ONECP(int, int);                     break;
 	   }
 	   break;
-	 case SHM_ULONG:
+	 case SHM_UINT:
 	   switch (ft) {
-	    case SHM_DOUBLE:  ONECP(unsigned long, double);          break;
-	    case SHM_FLOAT:   ONECP(unsigned long, float);           break;
-	    case SHM_ULONG:   ONECP(unsigned long, unsigned long);   break;
-	    case SHM_USHORT:  ONECP(unsigned long, unsigned short);  break;
-	    case SHM_UCHAR:   ONECP(unsigned long, unsigned char);   break;
+	    case SHM_DOUBLE:  ONECP(unsigned int, double);          break;
+	    case SHM_FLOAT:   ONECP(unsigned int, float);           break;
+	    case SHM_UINT:   ONECP(unsigned int, unsigned int);   break;
+	    case SHM_USHORT:  ONECP(unsigned int, unsigned short);  break;
+	    case SHM_UCHAR:   ONECP(unsigned int, unsigned char);   break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
-	    case SHM_CHAR:    ONECP(unsigned long, char);            break;
-	    case SHM_SHORT:   ONECP(unsigned long, short);           break;
-	    case SHM_LONG:    ONECP(unsigned long, long);            break;
+	    case SHM_CHAR:    ONECP(unsigned int, char);            break;
+	    case SHM_SHORT:   ONECP(unsigned int, short);           break;
+	    case SHM_INT:    ONECP(unsigned int, int);            break;
 	   }
 	   break;
 	 case SHM_USHORT:
 	   switch (ft) {
 	    case SHM_DOUBLE:  ONECP(unsigned short, double);         break;
 	    case SHM_FLOAT:   ONECP(unsigned short, float);          break;
-	    case SHM_ULONG:   ONECP(unsigned short, unsigned long);  break;
+	    case SHM_UINT:   ONECP(unsigned short, unsigned int);  break;
 	    case SHM_USHORT:  ONECP(unsigned short, unsigned short); break;
 	    case SHM_UCHAR:   ONECP(unsigned short, unsigned char);  break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
 	    case SHM_CHAR:    ONECP(unsigned short, char);           break;
 	    case SHM_SHORT:   ONECP(unsigned short, short);          break;
-	    case SHM_LONG:    ONECP(unsigned short, long);           break;
+	    case SHM_INT:    ONECP(unsigned short, int);           break;
 	   }
 	   break;
 	 case SHM_UCHAR:
 	   switch (ft) {
 	    case SHM_DOUBLE:  ONECP(unsigned char, double);          break;
 	    case SHM_FLOAT:   ONECP(unsigned char, float);           break;
-	    case SHM_ULONG:   ONECP(unsigned char, unsigned long);   break;
+	    case SHM_UINT:   ONECP(unsigned char, unsigned int);   break;
 	    case SHM_USHORT:  ONECP(unsigned char, unsigned short);  break;
 	    case SHM_UCHAR:   ONECP(unsigned char, unsigned char);   break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
 	    case SHM_CHAR:    ONECP(unsigned char, char);            break;
 	    case SHM_SHORT:   ONECP(unsigned char, short);           break;
-	    case SHM_LONG:    ONECP(unsigned char, long);            break;
+	    case SHM_INT:    ONECP(unsigned char, int);            break;
 	   }
 	   break;
 	 case SHM_SHORT:
 	   switch (ft) {
 	    case SHM_DOUBLE:  ONECP(short, double);                  break;
 	    case SHM_FLOAT:   ONECP(short, float);                   break;
-	    case SHM_ULONG:   ONECP(short, unsigned long);           break;
+	    case SHM_UINT:   ONECP(short, unsigned int);           break;
 	    case SHM_USHORT:  ONECP(short, unsigned short);          break;
 	    case SHM_UCHAR:   ONECP(short, unsigned char);           break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
 	    case SHM_CHAR:    ONECP(short, char);                    break;
 	    case SHM_SHORT:   ONECP(short, short);                   break;
-	    case SHM_LONG:    ONECP(short, long);                    break;
+	    case SHM_INT:    ONECP(short, int);                    break;
 	   }
 	   break;
 	 case SHM_STRING:  /*FALLTHROUGH*/
@@ -1059,43 +1051,42 @@ static typedcp(void *t, int tt, void *f, int ft, int np, int rev, int offset)
 	   switch (ft) {
 	    case SHM_DOUBLE:  ONECP(char, double);                   break;
 	    case SHM_FLOAT:   ONECP(char, float);                    break;
-	    case SHM_ULONG:   ONECP(char, unsigned long);            break;
+	    case SHM_UINT:   ONECP(char, unsigned int);            break;
 	    case SHM_USHORT:  ONECP(char, unsigned short);           break;
 	    case SHM_UCHAR:   ONECP(char, unsigned char);            break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
 	    case SHM_CHAR:    ONECP(char, char);                     break;
 	    case SHM_SHORT:   ONECP(char, short);                    break;
-	    case SHM_LONG:    ONECP(char, long);                     break;
+	    case SHM_INT:    ONECP(char, int);                     break;
 	   }
 	   break;
 	 case SHM_FLOAT:
 	   switch (ft) {
 	    case SHM_DOUBLE:  ONECP(float, double);                  break;
 	    case SHM_FLOAT:   ONECP(float, float);                   break;
-	    case SHM_ULONG:   ONECP(float, unsigned long);           break;
+	    case SHM_UINT:   ONECP(float, unsigned int);           break;
 	    case SHM_USHORT:  ONECP(float, unsigned short);          break;
 	    case SHM_UCHAR:   ONECP(float, unsigned char);           break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
 	    case SHM_CHAR:    ONECP(float, char);                    break;
 	    case SHM_SHORT:   ONECP(float, short);                   break;
-	    case SHM_LONG:    ONECP(float, long);                    break;
+	    case SHM_INT:    ONECP(float, int);                    break;
 	   }
 	   break;
 	 case SHM_DOUBLE:
 	   switch (ft) {
 	    case SHM_DOUBLE:  ONECP(double, double);                 break;
 	    case SHM_FLOAT:   ONECP(double, float);                  break;
-	    case SHM_ULONG:   ONECP(double, unsigned long);          break;
+	    case SHM_UINT:   ONECP(double, unsigned int);          break;
 	    case SHM_USHORT:  ONECP(double, unsigned short);         break;
 	    case SHM_UCHAR:   ONECP(double, unsigned char);          break;
 	    case SHM_STRING:  /*FALLTHROUGH*/
 	    case SHM_CHAR:    ONECP(double, char);                   break;
 	    case SHM_SHORT:   ONECP(double, short);                  break;
-	    case SHM_LONG:    ONECP(double, long);                   break;
+	    case SHM_INT:    ONECP(double, int);                   break;
 	   }
 	   break;
 	}
-	return(0);
 }
 
 /*
@@ -1186,10 +1177,10 @@ static char * GetNextAll (int flag)
    Input: version : specversion with PID if necessary (spec(1234) or fourc)
    Returns: State
 */
-long int SPS_GetSpecState (char *version)
+int SPS_GetSpecState (char *version)
 {
   struct shm_header *spec_shm;
-  long int state = 0;
+  int state = 0;
   struct shm_status *st;
   SPS_ARRAY private_shm;
   int was_attached;
@@ -1271,55 +1262,12 @@ convert_to_handle (char *spec_version, char *array_name)
   } else {
     private_shm = shm_list-> handle;
     if (shm_list -> spec_version == NULL && private_shm -> spec ) 
-      shm_list -> spec_version == (char *) strdup (private_shm -> spec);
+      shm_list -> spec_version = (char *) strdup (private_shm -> spec);
   }
   return private_shm;
 }
     
 
-/* 
-   Attaches to a SPEC array. Returns a private opac structure which user
-   should not modify. To get the real data call 
-   Input: fullname specversion with PID if necessary (spec(1234) or fourc)
-          array_name: The name of the SPEC array (i.e. MCA_DATA)
-	  write_flag: One if you intend to modify the shared memory
-   Output: NULL if error
-           opac structure to attached memory
-*/
-
-static int SPS_AttachToArray (char *fullname, char *array, int write_flag)
-{
-  struct shm_header * shm;
-  SPS_ARRAY private_shm;
-  
-  if ((private_shm = convert_to_handle (fullname, array)) == NULL)
-    return 1;
-  private_shm -> write_flag = write_flag;
-  private_shm -> stay_attached = 1;
-  if (private_shm) 
-    ReconnectToArray (private_shm, 0);
-  return 0;
-}
-
-/* 
-   Detaches from a SPEC array. The opac pointer private_shm stays valid.
-   If it is used in further calls the functions automatically try to reattach
-   to the SPEC array.
-   Input: fullname: Spec name
-          array name of the array
-   Returns: 1 error occured
-            0 everything OK
-*/
-
-static int SPS_DetachFromArray (char *fullname, char* array)
-{
-  SPS_ARRAY private_shm;
-  
-  if ((private_shm = convert_to_handle (fullname, array)) == NULL)
-    return 1;
-  private_shm -> stay_attached = 0;
-  return DeconnectArray (private_shm);
-}
 
 static int DeconnectArray (SPS_ARRAY private_shm)
 {
@@ -1342,8 +1290,8 @@ static int DeconnectArray (SPS_ARRAY private_shm)
 
 static int ReconnectToArray (SPS_ARRAY private_shm, int write_flag)
 {
-  struct shm_header *shm;
-  
+  struct shm_header *shm = NULL;
+
   if (write_flag && !private_shm ->write_flag) { /*Reattach with write flag */
     private_shm ->write_flag = 1;
     shm = private_shm -> shm;
@@ -1548,7 +1496,7 @@ static int TypedCopy (char *fullname, char *array, void *buffer, int my_type,
   return overflow;
 }
 
-static typedcp_private (SPS_ARRAY private_shm, void *buffer, int my_type,
+static int typedcp_private (SPS_ARRAY private_shm, void *buffer, int my_type,
 			int items_in_buffer, int direction)
 {
   void *data_ptr;
@@ -2197,7 +2145,7 @@ SPS_PutEnvStr (char *spec_version, char *array_name,
 */
 int SPS_IsUpdated (char *fullname, char *array) 
 {
-  unsigned long utime;
+  unsigned int utime;
   int updated;
   int was_attached;
   SPS_ARRAY private_shm;
@@ -2237,7 +2185,7 @@ int SPS_IsUpdated (char *fullname, char *array)
 
 int SPS_UpdateCounter (char *fullname, char *array) 
 {
-  unsigned long utime;
+  unsigned int utime;
   int updated;
   int was_attached;
   SPS_ARRAY private_shm;
@@ -2272,8 +2220,6 @@ int SPS_UpdateCounter (char *fullname, char *array)
 */
 int SPS_UpdateDone (char *fullname, char *array)
 {
-  unsigned long utime;
-  int updated;
   int was_attached;
   SPS_ARRAY private_shm;
   
@@ -2340,11 +2286,11 @@ SPS_GetArrayInfo (char * spec_version, char * array_name, int *rows,
 
 static struct shm_created *
 ll_addnew_array (char *specversion, char *arrayname, int isstatus, 
-		 struct shm_created* status, long id, int my_creation,
+		 struct shm_created* status, int id, int my_creation,
 		 struct shm_header *shm) 
 {
   struct shm_created *created, **new_created;
-  struct shm_created *new_array, *new_status;
+  struct shm_created *new_array;
 
   for (created = SHM_CREATED_HEAD , new_created = & SHM_CREATED_HEAD; 
        created ; new_created = &(created->next) , created = created ->next) {
@@ -2414,7 +2360,7 @@ ll_find_array (char *specversion, char *arrayname, int isstatus)
 }
 
 static void * 
-id_is_our_creation (unsigned long id) 
+id_is_our_creation (unsigned int id) 
 {
   struct shm_created *created;
   
@@ -2437,7 +2383,7 @@ shm_is_our_creation (void *shm)
   return NULL;
 }
 
-static int
+static void
 ll_delete_array (struct shm_created *todel)
 {
   struct shm_created *created, **new_created;
@@ -2451,7 +2397,7 @@ ll_delete_array (struct shm_created *todel)
       if (created->array_name)
 	free (created->array_name);
       free (created);
-      return;
+      break;
     }
   }
 }
@@ -2461,7 +2407,7 @@ create_shm (char * specversion, char *array, int rows,
 	    int cols, int type, int flags)
 {
   int sflag = 0644, key = -1;
-  long int id;
+  int id;
   int size;
   struct shm_header *shm;
 
@@ -2502,7 +2448,7 @@ static struct shm_header *
 create_master_shm (char* name)
 {
   int sflag = 0644, key = -1;
-  long int id;
+  int id;
   int size, i;
   struct shm_header *shm;
   struct shm_status *st;
@@ -2545,13 +2491,13 @@ create_master_shm (char* name)
   return shm;
 }  
 
-static delete_shm (long id) 
+static void delete_shm (int id) 
 {
   struct shmid_ds info;
   shmctl(id, IPC_RMID, &info);
 }
 
-static delete_id_from_status (struct shm_header *status, long id) 
+static void delete_id_from_status (struct shm_header *status, int id) 
 {
   struct shm_status *st;
   int i, j;
@@ -2686,7 +2632,7 @@ static int delete_handle(SPS_ARRAY handle)
 /* Deletes everything which there is */
 /* Should be called before you quit the program */
 
-int SPS_CleanUpAll ()
+void SPS_CleanUpAll ()
 {
   struct shm_created *created, *created_next;
   for (created = SHM_CREATED_HEAD ; created ; ) {
@@ -2759,7 +2705,7 @@ main()
   char *str;
   int rows,cols,type, flag, flags;
   int i, j;
-  long *ptr;
+  int *ptr;
   double *double_buf=NULL;
   int k_row, k_col;
   char * spec_version, *array;
@@ -2775,7 +2721,7 @@ main()
       SPS_CreateArray(buf1,buf2, rows, cols, type, flag);
       SPS_GetArrayInfo (buf1, buf2, &rows, &cols, &type, &flag);
       ptr = SPS_GetDataPointer(buf1, buf2, 1);
-      if (type == SHM_LONG) {
+      if (type == SHM_INT) {
 	for (i = 0; i < rows; i++) 
 	  for (j = 0; j < cols; j++) 
 	    *(ptr + i * cols + j) = i * 100 + j;
@@ -2862,8 +2808,8 @@ main()
 
 #if MY_TIMEVAL
 struct timeval {
-  unsigned long	tv_sec;		/* seconds */
-  long		tv_usec;	/* and microseconds */
+  unsigned int	tv_sec;		/* seconds */
+  int		tv_usec;	/* and microseconds */
 };
 
 struct timezone {
@@ -2896,7 +2842,7 @@ static bench_mark ()
 {
   int i;
 
-  printf("Version spec must run with\nshared array doubletest[1024][1024]\nshared long array longtest[1024][1024]\nshared string array text[200][200]\narray_op(\"fill\",doubletest,10000)\narray_op(\"fill\",longtest,10000)\ntext[0][]=\"id=myvalue\"\n"); 
+  printf("Version spec must run with\nshared array doubletest[1024][1024]\nshared int array longtest[1024][1024]\nshared string array text[200][200]\narray_op(\"fill\",doubletest,10000)\narray_op(\"fill\",longtest,10000)\ntext[0][]=\"id=myvalue\"\n"); 
 
   getchar();
 
