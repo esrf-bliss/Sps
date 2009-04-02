@@ -44,7 +44,7 @@ static int sps_type2py (int t)
   case SPS_SHORT:  return(NPY_SHORT);
   case SPS_LONG:   return(NPY_LONG);
   case SPS_CHAR:   return(NPY_BYTE);
-  case SPS_STRING: return(NPY_BYTE);
+  case SPS_STRING: return(NPY_STRING);
   case SPS_DOUBLE: return(NPY_DOUBLE);
   case SPS_FLOAT:  return(NPY_FLOAT);
   default:        return(-1);
@@ -71,6 +71,8 @@ static int sps_py2type (int t)
     type = SPS_FLOAT; break;
   case NPY_DOUBLE: 
     type = SPS_DOUBLE; break;
+  case NPY_STRING:
+    type = SPS_STRING; break;
   default:
     type = -1;
   }
