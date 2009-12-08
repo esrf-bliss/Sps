@@ -249,7 +249,9 @@
 #define SPS_UCHAR       7
 #define SPS_STRING      8
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 /*
   Input: Type code
@@ -662,3 +664,8 @@ SPS_CreateArray (char * spec_version, char *arrayname,
 /* Deletes everything which there is */
 /* Should be called before you quit the program */
 void SPS_CleanUpAll (void);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
