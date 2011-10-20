@@ -1,32 +1,34 @@
-#/*##########################################################################
-# Copyright (C) 2004-2006 European Synchrotron Radiation Facility
-#
-# This file is part of the PyMCA X-ray Fluorescence Toolkit developed at
-# the ESRF by the Beamline Instrumentation Software Support (BLISS) group.
-#
-# This toolkit is free software; you can redistribute it and/or modify it 
-# under the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option) 
-# any later version.
-#
-# PyMCA is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# PyMCA; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-# Suite 330, Boston, MA 02111-1307, USA.
-#
-# PyMCA follows the dual licensing model of Trolltech's Qt and Riverbank's PyQt
-# and cannot be used as a free plugin for a non-free program. 
-#
-# Please contact the ESRF industrial unit (industry@esrf.fr) if this license 
-# is a problem to you.
-#############################################################################*/
-//#include <stdlib.h>
+/****************************************************************************
+*
+*   Copyright (c) 1998-2011 European Synchrotron Radiation Facility (ESRF)
+*
+*   The software contained in this file "sps_py.c" is designed to interface
+*   the shared-data structures used and defined by the CSS "spec" package
+*   with other utility software.
+*
+*   Permission is hereby granted, free of charge, to any person obtaining a
+*   copy of the software in this file and associated header files (the
+*   "Software"), to deal in the Software without restriction, including
+*   without limitation the rights to use, copy, modify, merge, publish,
+*   distribute, sublicense, and/or sell copies of the Software, and to
+*   permit persons to whom the Software is furnished to do so, subject to
+*   the following conditions:
+*
+*   The above copyright notice and this permission notice shall be included
+*   in all copies or substantial portions of the Software.
+*
+*   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+*   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+*   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+*   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+*   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+*   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+*   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*
+****************************************************************************/
+/* #include <stdlib.h> */
 #include <sps.h>
-//#include <stdio.h>
+/* #include <stdio.h> */
 #include <Python.h>
 #include <numpy/arrayobject.h>
 
@@ -39,14 +41,14 @@ static int sps_type2py (int t)
 {
   switch (t) {
   case SPS_USHORT: return(NPY_USHORT);
-  case SPS_UINT:  return(NPY_UINT32);
+  case SPS_UINT:   return(NPY_UINT32);
   case SPS_UCHAR:  return(NPY_UBYTE);
   case SPS_SHORT:  return(NPY_SHORT);
-  case SPS_INT:   return(NPY_INT32);
+  case SPS_INT:    return(NPY_INT32);
   case SPS_CHAR:   return(NPY_BYTE);
   case SPS_STRING: return(NPY_STRING);
-  case SPS_DOUBLE: return(NPY_DOUBLE);
   case SPS_FLOAT:  return(NPY_FLOAT);
+  case SPS_DOUBLE: return(NPY_DOUBLE);
   default:        return(-1);
   }
 }
@@ -56,28 +58,28 @@ static int sps_py2type (int t)
   int type;
 
   switch (t) {
-  case NPY_INT32: 
+  case NPY_INT32:
     type = SPS_INT; break;
-  case NPY_UINT32: 
+  case NPY_UINT32:
     type = SPS_UINT; break;
-  case NPY_USHORT: 
+  case NPY_USHORT:
     type = SPS_USHORT; break;
-  case NPY_SHORT: 
+  case NPY_SHORT:
     type = SPS_SHORT; break;
-  case NPY_UBYTE: 
+  case NPY_UBYTE:
     type = SPS_UCHAR; break;
-  case NPY_BYTE: 
+  case NPY_BYTE:
     type = SPS_CHAR; break;
-  case NPY_FLOAT: 
+  case NPY_FLOAT:
     type = SPS_FLOAT; break;
-  case NPY_DOUBLE: 
+  case NPY_DOUBLE:
     type = SPS_DOUBLE; break;
   case NPY_STRING:
     type = SPS_STRING; break;
   default:
     type = -1;
   }
-  
+
   return type;
 }
 
@@ -87,7 +89,7 @@ static PyObject * sps_getkeylist(PyObject *self, PyObject *args)
   int i;
   char *key;
   PyObject *list, *string;
-  
+
   if (!PyArg_ParseTuple(args, "ss", &spec_version, &array_name)) {
     return NULL;
   }
@@ -100,7 +102,7 @@ static PyObject * sps_getkeylist(PyObject *self, PyObject *args)
   }
 
   return list;
-}    
+}
 
 static PyObject * sps_getarraylist(PyObject *self, PyObject *args)
 {
@@ -108,7 +110,7 @@ static PyObject * sps_getarraylist(PyObject *self, PyObject *args)
   int i;
   char *array;
   PyObject *list, *string;
-  
+
   if (!PyArg_ParseTuple(args, "|s", &spec_version)) {
     return NULL;
   }
@@ -121,7 +123,7 @@ static PyObject * sps_getarraylist(PyObject *self, PyObject *args)
   }
 
   return list;
-}    
+}
 
 static PyObject * sps_getspeclist(PyObject *self, PyObject *args)
 {
@@ -132,7 +134,7 @@ static PyObject * sps_getspeclist(PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple(args, "")) {
     return NULL;
   }
-  
+
   list = PyList_New(0);
   for (i=0; (spec_version = SPS_GetNextSpec (i)) ; i++) {
     string = PyString_FromString(spec_version);
@@ -141,7 +143,7 @@ static PyObject * sps_getspeclist(PyObject *self, PyObject *args)
   }
 
   return list;
-}    
+}
 
 static PyObject *sps_isupdated(PyObject *self, PyObject *args)
 {
@@ -152,7 +154,7 @@ static PyObject *sps_isupdated(PyObject *self, PyObject *args)
   }
 
   return PyInt_FromLong(SPS_IsUpdated(spec_version, array_name));
-}    
+}
 
 static PyObject *sps_updatecounter(PyObject *self, PyObject *args)
 {
@@ -163,7 +165,7 @@ static PyObject *sps_updatecounter(PyObject *self, PyObject *args)
   }
 
   return PyInt_FromLong(SPS_UpdateCounter(spec_version, array_name));
-}    
+}
 
 static PyObject *sps_updatedone(PyObject *self, PyObject *args)
 {
@@ -174,7 +176,7 @@ static PyObject *sps_updatedone(PyObject *self, PyObject *args)
   }
 
   return PyInt_FromLong(SPS_UpdateDone(spec_version, array_name));
-}    
+}
 
 static PyObject *sps_getenvstr(PyObject *self, PyObject *args)
 {
@@ -186,13 +188,13 @@ static PyObject *sps_getenvstr(PyObject *self, PyObject *args)
 
   ret = SPS_GetEnvStr(spec_version, array_name, key);
 
-  if (ret) { 
-  	return PyString_FromString(ret);
+  if (ret) {
+    return PyString_FromString(ret);
   } else {
         PyErr_SetString(SPSError, "Key not found");
-  	return NULL;
+    return NULL;
   }
-}    
+}
 
 static PyObject *sps_putenvstr(PyObject *self, PyObject *args)
 {
@@ -209,7 +211,7 @@ static PyObject *sps_putenvstr(PyObject *self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
   }
-}    
+}
 
 static PyObject *sps_getarrayinfo(PyObject *self, PyObject *args)
 {
@@ -225,9 +227,9 @@ static PyObject *sps_getarrayinfo(PyObject *self, PyObject *args)
     PyErr_SetString(SPSError, "Error getting array info");
     return NULL;
   }
-  
+
   return Py_BuildValue("(iiii)", rows, cols, type, flag);
-}    
+}
 
 static PyObject *sps_attach(PyObject *self, PyObject *args)
 {
@@ -263,7 +265,7 @@ static PyObject *sps_attach(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  if ((arrobj = (PyArrayObject*) PyArray_FromDimsAndData(2, dims, ptype, data))
+  if ((arrobj = (PyArrayObject*) PyArray_SimpleNewFromData(2, dims, ptype, data))
       == NULL) {
     SPS_ReturnDataPointer(data);
     PyErr_SetString(SPSError, "Could not create mathematical array");
@@ -271,7 +273,7 @@ static PyObject *sps_attach(PyObject *self, PyObject *args)
   }
 
   return (PyObject*) arrobj;
-}    
+}
 
 static PyObject *sps_detach(PyObject *self, PyObject *args)
 {
@@ -296,7 +298,7 @@ static PyObject *sps_detach(PyObject *self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
   }
-}    
+}
 
 static PyObject *sps_create(PyObject *self, PyObject *args)
 {
@@ -308,7 +310,7 @@ static PyObject *sps_create(PyObject *self, PyObject *args)
   void *data;
 
   if (!PyArg_ParseTuple(args, "ssii|ii", &spec_version, &array_name,
-			&rows, &cols, &type, &flag)) {
+            &rows, &cols, &type, &flag)) {
     return NULL;
   }
 
@@ -332,7 +334,7 @@ static PyObject *sps_create(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  if ((arrobj = (PyArrayObject*) PyArray_FromDimsAndData(2, dims, ptype, data))
+  if ((arrobj = (PyArrayObject*) PyArray_SimpleNewFromData(2, dims, ptype, data))
       == NULL) {
     /* Should delete the array  - don't have a lib function !!! FIXTHIS */
     PyErr_SetString(SPSError, "Could not create mathematical array");
@@ -340,13 +342,30 @@ static PyObject *sps_create(PyObject *self, PyObject *args)
   }
 
   return (PyObject*) arrobj;
-}    
+}
+
+static PyObject *sps_getshmid(PyObject *self, PyObject *args)
+{
+  char *spec_version, *array_name;
+  int rows, cols, type, flag;
+  int shmid;
+  if (!PyArg_ParseTuple(args, "ss", &spec_version, &array_name)) {
+     return NULL;
+   }
+  if (SPS_GetArrayInfo(spec_version, array_name, &rows, &cols, &type, &flag)) {
+    PyErr_SetString(SPSError, "Error getting array info");
+    return NULL;
+  }
+  shmid = SPS_GetShmId(spec_version, array_name);
+
+  return Py_BuildValue("i", shmid);
+}
 
 static PyObject *sps_getdata(PyObject *self, PyObject *args)
 {
   char *spec_version, *array_name;
   int rows, cols, type, flag;
-  int dims[2];
+  npy_intp dims[2];
   int ptype, stype;
   PyArrayObject *arrobj, *arrobj_nc;
 
@@ -362,7 +381,7 @@ static PyObject *sps_getdata(PyObject *self, PyObject *args)
   dims[0]=rows;
   dims[1]=cols;
   ptype = sps_type2py(type);
-  if ((arrobj_nc = (PyArrayObject*) PyArray_FromDims(2, dims, ptype)) 
+  if ((arrobj_nc = (PyArrayObject*) PyArray_SimpleNew(2, dims, ptype))
       == NULL) {
     PyErr_SetString(SPSError, "Could not create mathematical array");
     return NULL;
@@ -378,21 +397,21 @@ static PyObject *sps_getdata(PyObject *self, PyObject *args)
 
   stype = sps_py2type(ptype);
   SPS_CopyFromShared(spec_version, array_name, arrobj->data, stype ,
-		     rows * cols);
+             rows * cols);
 
   return (PyObject*) arrobj;
-}    
+}
 
 static PyObject *sps_getdatarow(PyObject *self, PyObject *args)
 {
   char *spec_version, *array_name;
   int rows, cols, type, flag, in_row, in_col = 0;
-  int dims[2];
+  npy_intp dims[2];
   int ptype, stype;
   PyArrayObject *arrobj, *arrobj_nc;
 
   if (!PyArg_ParseTuple(args, "ssi|i", &spec_version, &array_name, &in_row,
-			&in_col)) {
+            &in_col)) {
     return NULL;
   }
 
@@ -404,12 +423,12 @@ static PyObject *sps_getdatarow(PyObject *self, PyObject *args)
   dims[0] = (in_col == 0) ? cols : in_col;
 
   ptype = sps_type2py(type);
-  if ((arrobj_nc = (PyArrayObject*) PyArray_FromDims(1, dims, ptype)) 
+  if ((arrobj_nc = (PyArrayObject*) PyArray_SimpleNew(1, dims, ptype))
       == NULL) {
     PyErr_SetString(SPSError, "Could not create mathematical array");
     return NULL;
   }
-  
+
   if ((arrobj = (PyArrayObject*) PyArray_ContiguousFromObject(
             (PyObject*) arrobj_nc, ptype, 1, 1)) == NULL) {
     Py_DECREF(arrobj_nc);
@@ -420,10 +439,10 @@ static PyObject *sps_getdatarow(PyObject *self, PyObject *args)
 
   stype = sps_py2type(ptype);
   SPS_CopyRowFromShared(spec_version, array_name, arrobj->data, stype ,
-		     in_row, in_col, NULL);
+             in_row, in_col, NULL);
 
   return (PyObject*) arrobj;
-}    
+}
 
 static PyObject *sps_getdatacol(PyObject *self, PyObject *args)
 {
@@ -434,7 +453,7 @@ static PyObject *sps_getdatacol(PyObject *self, PyObject *args)
   PyArrayObject *arrobj, *arrobj_nc;
 
   if (!PyArg_ParseTuple(args, "ssi|i", &spec_version, &array_name, &in_col,
-			&in_row)) {
+            &in_row)) {
     return NULL;
   }
 
@@ -446,7 +465,7 @@ static PyObject *sps_getdatacol(PyObject *self, PyObject *args)
   dims[0] = (in_row == 0) ? rows : in_row;
 
   ptype = sps_type2py(type);
-  if ((arrobj_nc = (PyArrayObject*) PyArray_FromDims(1, dims, ptype)) 
+  if ((arrobj_nc = (PyArrayObject*) PyArray_SimpleNew(1, dims, ptype))
       == NULL) {
     PyErr_SetString(SPSError, "Could not create mathematical array");
     return NULL;
@@ -462,9 +481,9 @@ static PyObject *sps_getdatacol(PyObject *self, PyObject *args)
 
   stype = sps_py2type(ptype);
   SPS_CopyColFromShared(spec_version, array_name, arrobj->data, stype ,
-		     in_col, in_row, NULL);
+             in_col, in_row, NULL);
   return (PyObject*) arrobj;
-}    
+}
 
 static PyObject *sps_putdata(PyObject *self, PyObject *args)
 {
@@ -478,8 +497,8 @@ static PyObject *sps_putdata(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  if (!(src = (PyArrayObject*) PyArray_ContiguousFromObject(in_src, 
-   			    PyArray_NOTYPE, 2, 2))) {
+  if (!(src = (PyArrayObject*) PyArray_ContiguousFromObject(in_src,
+                PyArray_NOTYPE, 2, 2))) {
     PyErr_SetString(SPSError, "Input Array is not a 2 dim array");
     return NULL;
   }
@@ -492,9 +511,9 @@ static PyObject *sps_putdata(PyObject *self, PyObject *args)
     Py_DECREF(src);
     return NULL;
   }
-  
+
   no_items = src->dimensions[0] * src->dimensions[1];
-  
+
   if (SPS_CopyToShared(spec_version, array_name, src->data, stype, no_items)
       == -1) {
     PyErr_SetString(SPSError, "Error copying data to shared memory");
@@ -504,7 +523,7 @@ static PyObject *sps_putdata(PyObject *self, PyObject *args)
 
   Py_INCREF(Py_None);
   return Py_None;
-}    
+}
 
 static PyObject *sps_putdatarow(PyObject *self, PyObject *args)
 {
@@ -514,15 +533,15 @@ static PyObject *sps_putdatarow(PyObject *self, PyObject *args)
   PyArrayObject *src;
   int no_items;
   int in_row;
-  
+
 
   if (!PyArg_ParseTuple(args, "ssiO", &spec_version, &array_name, &in_row,
-			&in_src)) {
+            &in_src)) {
     return NULL;
   }
 
-  if (!(src = (PyArrayObject*) PyArray_ContiguousFromObject(in_src, 
-   			    PyArray_NOTYPE, 1, 1))) {
+  if (!(src = (PyArrayObject*) PyArray_ContiguousFromObject(in_src,
+                PyArray_NOTYPE, 1, 1))) {
     PyErr_SetString(SPSError, "Input Array is not a 1 dim array");
     return NULL;
   }
@@ -537,18 +556,18 @@ static PyObject *sps_putdatarow(PyObject *self, PyObject *args)
   }
 
   no_items = src->dimensions[0];
-  
-  if (SPS_CopyRowToShared(spec_version, array_name, src->data, stype, 
-			  in_row, no_items, NULL)
+
+  if (SPS_CopyRowToShared(spec_version, array_name, src->data, stype,
+              in_row, no_items, NULL)
       == -1) {
     PyErr_SetString(SPSError, "Error copying data to shared memory");
     Py_DECREF(src);
     return NULL;
   }
- 
+
   Py_INCREF(Py_None);
   return Py_None;
-}    
+}
 
 static PyObject *sps_putdatacol(PyObject *self, PyObject *args)
 {
@@ -558,15 +577,15 @@ static PyObject *sps_putdatacol(PyObject *self, PyObject *args)
   PyArrayObject *src;
   int no_items;
   int in_col = 0;
-  
+
 
   if (!PyArg_ParseTuple(args, "ssiO", &spec_version, &array_name, &in_col,
-			&in_src)) {
+            &in_src)) {
     return NULL;
   }
 
-  if (!(src = (PyArrayObject*) PyArray_ContiguousFromObject(in_src, 
-   			    PyArray_NOTYPE, 1, 1))) {
+  if (!(src = (PyArrayObject*) PyArray_ContiguousFromObject(in_src,
+                PyArray_NOTYPE, 1, 1))) {
     PyErr_SetString(SPSError, "Input Array is not a 1 dim array");
     return NULL;
   }
@@ -575,9 +594,9 @@ static PyObject *sps_putdatacol(PyObject *self, PyObject *args)
   stype = sps_py2type(ptype);
 
   no_items = src->dimensions[0];
-  
-  if (SPS_CopyColToShared(spec_version, array_name, src->data, stype, 
-			  in_col, no_items, NULL)
+
+  if (SPS_CopyColToShared(spec_version, array_name, src->data, stype,
+              in_col, no_items, NULL)
       == -1) {
     PyErr_SetString(SPSError, "Error copying data to shared memory");
     Py_DECREF(src);
@@ -586,7 +605,7 @@ static PyObject *sps_putdatacol(PyObject *self, PyObject *args)
 
   Py_INCREF(Py_None);
   return Py_None;
-}    
+}
 
 static void sps_cleanup()
 {
@@ -601,6 +620,7 @@ static PyMethodDef SPSMethods[] = {
   { "getenv",        sps_getenvstr,  METH_VARARGS},
   { "putenv",        sps_putenvstr,  METH_VARARGS},
   { "getkeylist",    sps_getkeylist, METH_VARARGS},
+  { "getshmid",      sps_getshmid,   METH_VARARGS},
   { "getdata",       sps_getdata,    METH_VARARGS},
   { "getdatarow",    sps_getdatarow, METH_VARARGS},
   { "getdatacol",    sps_getdatacol, METH_VARARGS},
@@ -614,20 +634,20 @@ static PyMethodDef SPSMethods[] = {
   { "putdatacol",    sps_putdatacol, METH_VARARGS},
   { NULL, NULL}
 };
-  
+
 void initsps()
 {
   PyObject *d, *m;
   m = Py_InitModule ("sps", SPSMethods);
-  
+
   //printf("Initializing sps\n");
   /* Add some symbolic constants to the module */
   d = PyModule_GetDict(m);
 
   PyDict_SetItemString(d, "DOUBLE",   PyInt_FromLong(SPS_DOUBLE));
   PyDict_SetItemString(d, "FLOAT",    PyInt_FromLong(SPS_FLOAT));
-  PyDict_SetItemString(d, "INT",     PyInt_FromLong(SPS_INT));
-  PyDict_SetItemString(d, "UINT",    PyInt_FromLong(SPS_UINT));
+  PyDict_SetItemString(d, "INT",      PyInt_FromLong(SPS_INT));
+  PyDict_SetItemString(d, "UINT",     PyInt_FromLong(SPS_UINT));
   PyDict_SetItemString(d, "SHORT",    PyInt_FromLong(SPS_SHORT));
   PyDict_SetItemString(d, "USHORT",   PyInt_FromLong(SPS_USHORT));
   PyDict_SetItemString(d, "CHAR",     PyInt_FromLong(SPS_CHAR));
@@ -637,7 +657,7 @@ void initsps()
   PyDict_SetItemString(d, "IS_ARRAY", PyInt_FromLong(SPS_IS_ARRAY));
   PyDict_SetItemString(d, "IS_MCA",   PyInt_FromLong(SPS_IS_MCA));
   PyDict_SetItemString(d, "IS_IMAGE", PyInt_FromLong(SPS_IS_IMAGE));
-  
+
   PyDict_SetItemString(d, "TAG_STATUS", PyInt_FromLong(SPS_TAG_STATUS));
   PyDict_SetItemString(d, "TAG_ARRAY", PyInt_FromLong(SPS_TAG_ARRAY));
   PyDict_SetItemString(d, "TAG_MASK", PyInt_FromLong(SPS_TAG_MASK));
@@ -645,6 +665,7 @@ void initsps()
   PyDict_SetItemString(d, "TAG_IMAGE", PyInt_FromLong(SPS_TAG_IMAGE));
   PyDict_SetItemString(d, "TAG_SCAN", PyInt_FromLong(SPS_TAG_SCAN));
   PyDict_SetItemString(d, "TAG_INFO", PyInt_FromLong(SPS_TAG_INFO));
+  PyDict_SetItemString(d, "TAG_FRAMES", PyInt_FromLong(SPS_TAG_FRAMES));
 
 
   SPSError = PyErr_NewException("sps.error", NULL, NULL);
