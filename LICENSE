@@ -1,7 +1,7 @@
 /****************************************************************************
 *
-*   Copyright (c) 1998-2011 Certified Scientific Software (CSS)
-*   Copyright (c) 1998-2011 European Synchrotron Radiation Facility (ESRF)
+*   Copyright (c) 1998-2016 Certified Scientific Software (CSS)
+*   Copyright (c) 1998-2016 European Synchrotron Radiation Facility (ESRF)
 *
 *   The software contained in the files "sps.h", "blissmalloc.h", "spec_shm.h",
 *   "sps.c" and "sps_py.c", is designed to interface the shared-data structures

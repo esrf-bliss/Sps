@@ -1,7 +1,7 @@
 /****************************************************************************
-*   @(#)spec_shm.h	5.6  02/24/10 CSS
+*   @(#)spec_shm.h	6.7  11/20/13 CSS
 *
-*   "Spec" Release 5
+*   "spec" Release 6
 *
 *   Copyright (c) 1995-2010 Certified Scientific Software
 *
@@ -38,8 +38,11 @@
 *  Difference between SHM_VERSION 4 and 5 is the addition of
 *  the SHM_IS_FRAMES tag and the frame_size and latest_frames
 *  elements of the shm_head structure.
+*
+*  Difference between SHM_VERSION 5 and 6 is the addition of
+*  metadata tail to data and info array to shm_head structure.
 */
-#define SHM_VERSION     5
+#define SHM_VERSION     6
 
 /* structure flags */
 #define SHM_IS_STATUS   0x0001
@@ -61,14 +64,29 @@
 #define SHM_CHAR        6
 #define SHM_UCHAR       7
 #define SHM_STRING      8
+#define SHM_LONG64      9
+#define SHM_ULONG64     10
 
 #define NAME_LENGTH     32
+#define INFO_LENGTH     512
+
+/*
+*  The meta_length field is not defined by the standard.
+*  However, spec will use the following size for the
+*  shared arrays it creates.  Applications that use
+*  the meta data should always check the meta_length
+*  field and not rely on SHM_META_SIZE.
+*/
+#define SHM_META_SIZE   8192    /* size of metadata region added to tail of array */
+
 #define SHM_OHEAD_SIZE  1024    /* Old header size */
 #define SHM_HEAD_SIZE   4096    /* Header size puts data on page boundary */
 
 #ifndef SPEC_TYPE_DEFS
 typedef int     s32_t;
 typedef unsigned int    u32_t;
+typedef long long       s64_t;
+typedef unsigned long long      u64_t;
 #endif
 
 struct  shm_head {
@@ -91,6 +109,15 @@ struct  shm_head {
 	*/
 	u32_t   frame_size;             /* number of rows per frame */
 	u32_t   latest_frame;           /* most recently updated frame */
+	/*
+	*  The metadata region added in SHM_VERSION 6 is located after
+	*  the array data.  The meta_start element is the offset
+	*  from the start of the shared segment.
+	*/
+	u32_t   meta_start;             /* byte offset to metadata tail */
+	u32_t   meta_length;            /* byte length of metadata tail */
+	char    pad[256];               /* space to expand */
+	char    info[INFO_LENGTH];      /* arbitrary info */
 };
 
 #define SHM_MAX_IDS     256
