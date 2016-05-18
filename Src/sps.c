@@ -2309,11 +2309,13 @@ int SPS_IsUpdated(char *fullname, char *array) {
   u32_t utime;
   int updated;
   int was_attached;
+  u32_t id;
   SPS_ARRAY private_shm;
 
   if ((private_shm = convert_to_handle(fullname, array)) == NULL)
     return -1;
 
+  id = private_shm->id;
   utime = private_shm->utime;
   was_attached = private_shm->attached;
   
@@ -2322,7 +2324,9 @@ int SPS_IsUpdated(char *fullname, char *array) {
   
   private_shm->utime = private_shm->shm->head.head.utime;
 
-  updated = (private_shm->shm->head.head.utime == utime)? 0:1;
+  updated = (private_shm->id == id)? 0:1;
+  if (!updated)
+    updated = (private_shm->shm->head.head.utime == utime)? 0:1;
   if (was_attached == 0 && private_shm->stay_attached == 0)
     DeconnectArray(private_shm);
 

@@ -1,6 +1,6 @@
 Example:
 
-/bin/rm -rf build; python setup.py install --install-lib /segfs/bliss/source/python/sps/numpy_modules/lib/suse72
+/bin/rm -rf build; python setup.py install --install-lib ../lib/debian6
 
 Please, do not forget to delete the build directory when you are done:
 
