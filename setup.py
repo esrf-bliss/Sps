@@ -24,13 +24,8 @@ elif platform.system() == 'SunOS' :
 else:
     extra_compile_args = []
     
-ext_modules = [Extension(
-                        name = 'spslut',
-                        sources=['Src/sps_lut.c',
-                                 'Src/spslut_py.c'],
-                        extra_compile_args = extra_compile_args,
-                        include_dirs  = ['Include', numpy.get_include()],
-                   )]
+ext_modules = []
+
 if sys.platform == "win32":
     define_macros = [('WIN32',None)]
 else:
